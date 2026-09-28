@@ -15,6 +15,7 @@ import { observeRender, waitForRender } from './render/wait-for-render';
 
 export default class RenderedHtmlExportPlugin extends Plugin {
   settings: ExportSettings = { ...DEFAULT_SETTINGS };
+  private readonly viewActions = new Map<MarkdownView, HTMLElement>();
 
   async onload(): Promise<void> {
     this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() as Partial<ExportSettings> };
@@ -29,6 +30,30 @@ export default class RenderedHtmlExportPlugin extends Plugin {
       name: 'Diagnose Reading View vs off-screen render',
       callback: () => { void this.diagnoseActiveNote(); }
     });
+    this.addRibbonIcon('printer', 'Export HTML (Print to PDF in browser)', () => {
+      void this.exportActiveNote();
+    });
+    this.registerEvent(this.app.workspace.on('active-leaf-change', leaf => {
+      this.ensureViewAction(leaf?.view instanceof MarkdownView ? leaf.view : null);
+    }));
+    this.registerEvent(this.app.workspace.on('file-open', () => {
+      this.ensureViewAction(this.app.workspace.getActiveViewOfType(MarkdownView));
+    }));
+    this.app.workspace.onLayoutReady(() => {
+      this.ensureViewAction(this.app.workspace.getActiveViewOfType(MarkdownView));
+    });
+    this.register(() => {
+      for (const action of this.viewActions.values()) action.remove();
+      this.viewActions.clear();
+    });
+  }
+
+  private ensureViewAction(view: MarkdownView | null): void {
+    if (!view || this.viewActions.has(view)) return;
+    const action = view.addAction('printer', 'Export HTML (Print to PDF in browser)', () => {
+      void this.exportActiveNote(view);
+    });
+    this.viewActions.set(view, action);
   }
 
   async saveSettings(): Promise<void> {
@@ -90,8 +115,7 @@ export default class RenderedHtmlExportPlugin extends Plugin {
     }
   }
 
-  private async exportActiveNote(): Promise<void> {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+  private async exportActiveNote(view: MarkdownView | null = this.app.workspace.getActiveViewOfType(MarkdownView)): Promise<void> {
     const file = view?.file;
     if (!file) { new Notice('No active Markdown note.'); return; }
     const filename = htmlFilename(file.basename);

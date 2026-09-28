@@ -567,6 +567,7 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
   constructor() {
     super(...arguments);
     this.settings = { ...DEFAULT_SETTINGS };
+    this.viewActions = /* @__PURE__ */ new Map();
   }
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };
@@ -585,6 +586,29 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
         void this.diagnoseActiveNote();
       }
     });
+    this.addRibbonIcon("printer", "Export HTML (Print to PDF in browser)", () => {
+      void this.exportActiveNote();
+    });
+    this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
+      this.ensureViewAction(leaf?.view instanceof import_obsidian4.MarkdownView ? leaf.view : null);
+    }));
+    this.registerEvent(this.app.workspace.on("file-open", () => {
+      this.ensureViewAction(this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView));
+    }));
+    this.app.workspace.onLayoutReady(() => {
+      this.ensureViewAction(this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView));
+    });
+    this.register(() => {
+      for (const action of this.viewActions.values()) action.remove();
+      this.viewActions.clear();
+    });
+  }
+  ensureViewAction(view) {
+    if (!view || this.viewActions.has(view)) return;
+    const action = view.addAction("printer", "Export HTML (Print to PDF in browser)", () => {
+      void this.exportActiveNote(view);
+    });
+    this.viewActions.set(view, action);
   }
   async saveSettings() {
     await this.saveData(this.settings);
@@ -641,8 +665,7 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
       rendered?.dispose();
     }
   }
-  async exportActiveNote() {
-    const view = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
+  async exportActiveNote(view = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView)) {
     const file = view?.file;
     if (!file) {
       new import_obsidian4.Notice("No active Markdown note.");
