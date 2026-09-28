@@ -50,5 +50,5 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
     img, svg { max-width: 100%; }
     @media print { main.rendered-print-exporter-document { padding: 0 !important; } }
   `;
-  return `<!doctype html>\n<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, '<\\/style')}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
+  return `<!doctype html>\n<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, '<\\/style')}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="print rendered-print-exporter-document"><div class="workspace-leaf-content is-read-mode" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
 }

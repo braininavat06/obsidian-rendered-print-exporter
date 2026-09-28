@@ -362,7 +362,15 @@ function printCss(settings) {
     @page { size: ${settings.pageSize}; margin: ${settings.marginMm}mm; }
     html, body { background: white !important; }
     html, body { margin: 0 !important; padding: 0 !important; }
-    /* Obsidian's app print CSS hides every body child without .print. */
+    /* Preserve theme, snippet, highlight, and callout colors in Chromium PDF. */
+    html,
+    body,
+    body.rendered-print-exporter .rendered-print-exporter-document,
+    body.rendered-print-exporter .rendered-print-exporter-document * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    /* Obsidian's app print CSS only keeps a direct body child with .print. */
     body.rendered-print-exporter > main.rendered-print-exporter-document { display: block !important; }
     body.rendered-print-exporter .rendered-print-exporter-document,
     body.rendered-print-exporter .rendered-print-exporter-document .markdown-preview-view {
@@ -426,7 +434,7 @@ function buildHtml(title, content, css, settings) {
     @media print { main.rendered-print-exporter-document { padding: 0 !important; } }
   `;
   return `<!doctype html>
-<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
+<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="print rendered-print-exporter-document"><div class="workspace-leaf-content is-read-mode" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
 }
 
 // src/export/save-html.ts
