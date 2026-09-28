@@ -548,7 +548,11 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
         })
       };
       console.debug("[Rendered Print Exporter] DOM comparison", comparison);
-      const reportPath = file.path.replace(/\.md$/i, ".rendered-print-exporter-diagnostics.json");
+      const diagnosticsFolder = "Rendered HTML Export Diagnostics";
+      if (!await this.app.vault.adapter.exists(diagnosticsFolder)) {
+        await this.app.vault.createFolder(diagnosticsFolder);
+      }
+      const reportPath = `${diagnosticsFolder}/${file.basename}.json`;
       await this.app.vault.adapter.write(reportPath, JSON.stringify(comparison, null, 2));
       new import_obsidian4.Notice(`DOM diagnostics saved: ${reportPath}`);
     } catch (error) {

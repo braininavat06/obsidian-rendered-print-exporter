@@ -18,7 +18,7 @@ Android first tries the public `Download/Obsidian HTML/` folder through the Capa
 
 Create a test note with a local JPEG named `test.jpg`, using `![[test.jpg|캡션 테스트|250]]` and `![[test.jpg|오른쪽 정렬 테스트|right|250]]`.
 
-Open that note in **Reading View**, then run **Diagnose Reading View vs off-screen render**. The command logs exact image and figure `outerHTML` for each side, caption text, width attributes and layout widths, classes, inline styles, ancestor hierarchy, connectivity, and element counts. It also saves a `.rendered-print-exporter-diagnostics.json` report next to the note with field-by-field comparisons. The ordinary export command logs the off-screen snapshot before cloning. This diagnostic does not switch the active view or save HTML.
+Open that note in **Reading View**, then run **Diagnose Reading View vs off-screen render**. The command logs exact image and figure `outerHTML` for each side, caption text, width attributes and layout widths, classes, inline styles, ancestor hierarchy, connectivity, and element counts. It saves the same JSON report as `Rendered HTML Export Diagnostics/<note basename>.json` in the vault root, creating the folder if needed and replacing an older report for the same basename. The ordinary export command logs the off-screen snapshot before cloning. This diagnostic does not switch the active view or save HTML.
 
 The DOM observer is armed before `MarkdownRenderer.render`. After rendering and two frames, it waits for 150 ms without subtree mutation, with a 2 s limit. The configured render delay is additional time. Image decoding and another quiet check happen before cloning.
 
