@@ -132,6 +132,11 @@ export default class RenderedHtmlExportPlugin extends Plugin {
       }
       console.debug('[Rendered Print Exporter] postprocessors complete');
       if (!rendered.element.hasChildNodes()) { new Notice('Rendered DOM is empty.'); return; }
+      console.debug('[Rendered Print Exporter] document size', {
+        markdownCharacters: markdown.length,
+        renderedTextCharacters: rendered.element.textContent?.length ?? 0,
+        renderedHtmlCharacters: rendered.element.outerHTML.length
+      });
       const clone = cloneRenderedDom(rendered.element);
       inlineCanvas(rendered.element, clone);
       sanitizeDom(clone, this.settings.includeProperties);

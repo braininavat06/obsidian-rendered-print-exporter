@@ -362,6 +362,8 @@ function printCss(settings) {
     @page { size: ${settings.pageSize}; margin: ${settings.marginMm}mm; }
     html, body { background: white !important; }
     body { margin: 0; }
+    /* Obsidian's app print CSS hides every body child without .print. */
+    body.rendered-print-exporter > main.rendered-print-exporter-document { display: block !important; }
     img, svg { max-width: 100%; }
     figure { break-inside: avoid; }
     h1, h2, h3, h4, h5, h6 { break-after: avoid; }
@@ -377,11 +379,34 @@ function buildHtml(title, content, css, settings) {
   const current = document.body.classList.contains("theme-dark") ? "theme-dark" : "theme-light";
   const theme = settings.theme === "current" ? current : "theme-light";
   const normalization = `
-    html, body { margin: 0; min-height: 100%; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      height: auto !important;
+      max-height: none !important;
+      overflow: auto !important;
+      contain: none !important;
+    }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
     body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
     main.rendered-print-exporter-document { max-width: 900px; margin: 0 auto; padding: 24px; }
-    .markdown-preview-view { overflow: visible; }
+    /* Obsidian's pane CSS constrains Reading View to one viewport. In a
+       standalone document each wrapper must grow with the entire note. */
+    .rendered-print-exporter-document,
+    .rendered-print-exporter-document .workspace-leaf-content,
+    .rendered-print-exporter-document .markdown-reading-view,
+    .rendered-print-exporter-document .markdown-preview-view,
+    .rendered-print-exporter-document .markdown-preview-sizer,
+    .rendered-print-exporter-document .markdown-preview-section {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      contain: none !important;
+    }
+    .rendered-print-exporter-document .markdown-preview-view {
+      scrollbar-gutter: auto;
+    }
     img, svg { max-width: 100%; }
     @media print { main.rendered-print-exporter-document { max-width: none; margin: 0; padding: 0; } }
   `;
@@ -688,6 +713,11 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
         new import_obsidian4.Notice("Rendered DOM is empty.");
         return;
       }
+      console.debug("[Rendered Print Exporter] document size", {
+        markdownCharacters: markdown.length,
+        renderedTextCharacters: rendered.element.textContent?.length ?? 0,
+        renderedHtmlCharacters: rendered.element.outerHTML.length
+      });
       const clone = cloneRenderedDom(rendered.element);
       inlineCanvas(rendered.element, clone);
       sanitizeDom(clone, this.settings.includeProperties);

@@ -12,6 +12,8 @@ For development, run `npm ci && npm run typecheck && npm run build` and copy the
 
 Tap the **printer icon** in the ribbon or the note header to export. The same action is available as **Export rendered note to HTML** in the command palette. It creates HTML for the browser's Print → Save as PDF flow; the plugin does not generate a PDF itself. The command reads the active Markdown file from the vault and renders it in a connected, off-screen DOM host without switching the current editor mode. It waits for rendering, two animation frames, a configurable delay, DOM quiet time, and image decode before cloning the result. The clone is cleaned and converted into a static HTML file. The render component and host are disposed afterward.
 
+The exported page overrides Obsidian's viewport height, overflow, and containment rules so a long note can scroll normally. It also overrides Obsidian's app-only print rule that hides body content outside its own `.print` container.
+
 Android first tries the public `Download/Obsidian HTML/` folder through the Capacitor Filesystem bridge (absolute path and `EXTERNAL_STORAGE`). If Android storage restrictions reject both, it tries the public `Documents/Obsidian HTML/` folder. Other platforms use the browser download API. The completion notice displays the returned location. Any local image URL that remains after inlining is logged and produces a warning notice.
 
 ## Reading View DOM diagnostic
