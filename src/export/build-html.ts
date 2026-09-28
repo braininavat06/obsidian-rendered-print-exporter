@@ -9,13 +9,28 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
   const current = document.body.classList.contains('theme-dark') ? 'theme-dark' : 'theme-light';
   const theme = settings.theme === 'current' ? current : 'theme-light';
   const normalization = `
-    html, body {
+    html {
       margin: 0;
       min-height: 100%;
       height: auto !important;
       max-height: none !important;
-      overflow: auto !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
       contain: none !important;
+      overscroll-behavior: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    body {
+      display: block !important;
+      position: static !important;
+      margin: 0;
+      min-height: 100vh;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      contain: none !important;
+      overscroll-behavior: auto !important;
+      touch-action: pan-y pinch-zoom !important;
     }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
     body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
@@ -33,11 +48,24 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
     .rendered-print-exporter-document .markdown-preview-view,
     .rendered-print-exporter-document .markdown-preview-sizer,
     .rendered-print-exporter-document .markdown-preview-section {
+      display: block !important;
+      position: static !important;
+      inset: auto !important;
+      flex: none !important;
+      width: auto;
       height: auto !important;
       max-height: none !important;
       min-height: 0 !important;
       overflow: visible !important;
       contain: none !important;
+      overscroll-behavior: auto !important;
+      touch-action: pan-y pinch-zoom !important;
+    }
+    .rendered-print-exporter-document,
+    .rendered-print-exporter-document .workspace-leaf-content,
+    .rendered-print-exporter-document .markdown-reading-view,
+    .rendered-print-exporter-document .markdown-preview-view {
+      width: 100% !important;
     }
     .rendered-print-exporter-document .markdown-preview-view {
       scrollbar-gutter: auto;
