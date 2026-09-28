@@ -391,6 +391,7 @@ function escapeHtml(value) {
 function buildHtml(title, content, css, settings) {
   const current = document.body.classList.contains("theme-dark") ? "theme-dark" : "theme-light";
   const theme = settings.theme === "current" ? current : "theme-light";
+  const noteTitle = settings.includeNoteTitle ? `<h1 class="rendered-print-exporter-title">${escapeHtml(title)}</h1>` : "";
   const normalization = `
     html {
       margin: 0;
@@ -458,11 +459,23 @@ function buildHtml(title, content, css, settings) {
       max-width: none !important;
       margin-inline: 0 !important;
     }
+    .rendered-print-exporter-title {
+      color: var(--h1-color, var(--text-normal, #222));
+      font-family: var(--h1-font, var(--font-text));
+      font-size: var(--h1-size, 2em);
+      font-style: var(--h1-style, normal);
+      font-variant: var(--h1-variant, normal);
+      font-weight: var(--h1-weight, 700);
+      line-height: var(--h1-line-height, 1.2);
+      margin: 0 0 1em;
+      padding: 0;
+      break-after: avoid;
+    }
     img, svg { max-width: 100%; }
     @media print { main.rendered-print-exporter-document { padding: 0 !important; } }
   `;
   return `<!doctype html>
-<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="print rendered-print-exporter-document"><div class="workspace-leaf-content is-read-mode" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
+<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="print rendered-print-exporter-document"><div class="workspace-leaf-content is-read-mode" data-type="markdown"><div class="markdown-reading-view">${noteTitle}${content.outerHTML}</div></div></main></body></html>`;
 }
 
 // src/export/save-html.ts
@@ -550,6 +563,10 @@ var ExportSettingTab = class extends import_obsidian3.PluginSettingTab {
         await this.plugin.saveSettings();
       }
     }));
+    new import_obsidian3.Setting(containerEl).setName("Include note title").setDesc("Show the note filename as a heading at the top of the exported document.").addToggle((toggle) => toggle.setValue(this.plugin.settings.includeNoteTitle).onChange(async (value) => {
+      this.plugin.settings.includeNoteTitle = value;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian3.Setting(containerEl).setName("Include properties").addToggle((toggle) => toggle.setValue(this.plugin.settings.includeProperties).onChange(async (value) => {
       this.plugin.settings.includeProperties = value;
       await this.plugin.saveSettings();
@@ -569,6 +586,7 @@ var DEFAULT_SETTINGS = {
   theme: "light",
   pageSize: "A4",
   marginMm: 12,
+  includeNoteTitle: true,
   includeProperties: false,
   renderDelayMs: 150
 };

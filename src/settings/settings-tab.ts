@@ -20,6 +20,9 @@ export class ExportSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Page margin (mm)').setDesc('Also controls spacing around the HTML in a browser.').addText(text => text
       .setValue(String(this.plugin.settings.marginMm))
       .onChange(async value => { const n = Number(value); if (Number.isFinite(n) && n >= 0 && n <= 50) { this.plugin.settings.marginMm = n; await this.plugin.saveSettings(); } }));
+    new Setting(containerEl).setName('Include note title').setDesc('Show the note filename as a heading at the top of the exported document.').addToggle(toggle => toggle
+      .setValue(this.plugin.settings.includeNoteTitle)
+      .onChange(async value => { this.plugin.settings.includeNoteTitle = value; await this.plugin.saveSettings(); }));
     new Setting(containerEl).setName('Include properties').addToggle(toggle => toggle
       .setValue(this.plugin.settings.includeProperties)
       .onChange(async value => { this.plugin.settings.includeProperties = value; await this.plugin.saveSettings(); }));

@@ -12,6 +12,8 @@ For development, run `npm ci && npm run typecheck && npm run build` and copy the
 
 Tap the **printer icon** in the ribbon or the note header to export. The same action is available as **Export rendered note to HTML** in the command palette. It creates HTML for the browser's Print → Save as PDF flow; the plugin does not generate a PDF itself. The command reads the active Markdown file from the vault and renders it in a connected, off-screen DOM host without switching the current editor mode. It waits for rendering, two animation frames, a configurable delay, DOM quiet time, and image decode before cloning the result. The clone is cleaned and converted into a static HTML file. The render component and host are disposed afterward.
 
+The note basename is included once as the document heading by default. **Include note title** can disable this export-only heading; Obsidian's own inline title remains removed to prevent duplication.
+
 The exported page overrides Obsidian's viewport height, flex, overflow, containment, overscroll, and touch-action rules. Chrome, Android WebView based HTML viewers, and Samsung Internet therefore use the browser document as the scroll container instead of an Obsidian workspace pane. It also overrides Obsidian's app-only print rule that hides body content outside its own `.print` container.
 
 **Page margin (mm)** controls the PDF page margin and the browser HTML's outer spacing. At `0`, the exporter removes its own padding and Obsidian Reading View's file padding and readable-line-width cap. Browser print headers, footers, and printer-specific unprintable areas are controlled by the browser or printer.
