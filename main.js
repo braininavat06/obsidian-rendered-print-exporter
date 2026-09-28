@@ -361,9 +361,14 @@ function printCss(settings) {
   return `@media print {
     @page { size: ${settings.pageSize}; margin: ${settings.marginMm}mm; }
     html, body { background: white !important; }
-    body { margin: 0; }
+    html, body { margin: 0 !important; padding: 0 !important; }
     /* Obsidian's app print CSS hides every body child without .print. */
     body.rendered-print-exporter > main.rendered-print-exporter-document { display: block !important; }
+    body.rendered-print-exporter .rendered-print-exporter-document,
+    body.rendered-print-exporter .rendered-print-exporter-document .markdown-preview-view {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
     img, svg { max-width: 100%; }
     figure { break-inside: avoid; }
     h1, h2, h3, h4, h5, h6 { break-after: avoid; }
@@ -389,7 +394,12 @@ function buildHtml(title, content, css, settings) {
     }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
     body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
-    main.rendered-print-exporter-document { max-width: 900px; margin: 0 auto; padding: 24px; }
+    main.rendered-print-exporter-document {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: min(${settings.marginMm}mm, 24px);
+    }
     /* Obsidian's pane CSS constrains Reading View to one viewport. In a
        standalone document each wrapper must grow with the entire note. */
     .rendered-print-exporter-document,
@@ -406,9 +416,14 @@ function buildHtml(title, content, css, settings) {
     }
     .rendered-print-exporter-document .markdown-preview-view {
       scrollbar-gutter: auto;
+      padding: 0 !important;
+    }
+    .rendered-print-exporter-document .markdown-preview-sizer {
+      max-width: none !important;
+      margin-inline: 0 !important;
     }
     img, svg { max-width: 100%; }
-    @media print { main.rendered-print-exporter-document { max-width: none; margin: 0; padding: 0; } }
+    @media print { main.rendered-print-exporter-document { padding: 0 !important; } }
   `;
   return `<!doctype html>
 <html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
@@ -492,7 +507,7 @@ var ExportSettingTab = class extends import_obsidian3.PluginSettingTab {
       this.plugin.settings.pageSize = value === "Letter" ? "Letter" : "A4";
       await this.plugin.saveSettings();
     }));
-    new import_obsidian3.Setting(containerEl).setName("Margin (mm)").addText((text) => text.setValue(String(this.plugin.settings.marginMm)).onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName("Page margin (mm)").setDesc("Also controls spacing around the HTML in a browser.").addText((text) => text.setValue(String(this.plugin.settings.marginMm)).onChange(async (value) => {
       const n = Number(value);
       if (Number.isFinite(n) && n >= 0 && n <= 50) {
         this.plugin.settings.marginMm = n;

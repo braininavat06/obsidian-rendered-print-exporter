@@ -17,7 +17,7 @@ export class ExportSettingTab extends PluginSettingTab {
       .addOption('A4', 'A4').addOption('Letter', 'Letter')
       .setValue(this.plugin.settings.pageSize)
       .onChange(async value => { this.plugin.settings.pageSize = value === 'Letter' ? 'Letter' : 'A4'; await this.plugin.saveSettings(); }));
-    new Setting(containerEl).setName('Margin (mm)').addText(text => text
+    new Setting(containerEl).setName('Page margin (mm)').setDesc('Also controls spacing around the HTML in a browser.').addText(text => text
       .setValue(String(this.plugin.settings.marginMm))
       .onChange(async value => { const n = Number(value); if (Number.isFinite(n) && n >= 0 && n <= 50) { this.plugin.settings.marginMm = n; await this.plugin.saveSettings(); } }));
     new Setting(containerEl).setName('Include properties').addToggle(toggle => toggle

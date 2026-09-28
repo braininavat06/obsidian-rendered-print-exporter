@@ -14,6 +14,8 @@ Tap the **printer icon** in the ribbon or the note header to export. The same ac
 
 The exported page overrides Obsidian's viewport height, overflow, and containment rules so a long note can scroll normally. It also overrides Obsidian's app-only print rule that hides body content outside its own `.print` container.
 
+**Page margin (mm)** controls the PDF page margin and the browser HTML's outer spacing. At `0`, the exporter removes its own padding and Obsidian Reading View's file padding and readable-line-width cap. Browser print headers, footers, and printer-specific unprintable areas are controlled by the browser or printer.
+
 Android first tries the public `Download/Obsidian HTML/` folder through the Capacitor Filesystem bridge (absolute path and `EXTERNAL_STORAGE`). If Android storage restrictions reject both, it tries the public `Documents/Obsidian HTML/` folder. Other platforms use the browser download API. The completion notice displays the returned location. Any local image URL that remains after inlining is logged and produces a warning notice.
 
 ## Reading View DOM diagnostic

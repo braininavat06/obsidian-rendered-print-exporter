@@ -19,7 +19,12 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
     }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
     body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
-    main.rendered-print-exporter-document { max-width: 900px; margin: 0 auto; padding: 24px; }
+    main.rendered-print-exporter-document {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: min(${settings.marginMm}mm, 24px);
+    }
     /* Obsidian's pane CSS constrains Reading View to one viewport. In a
        standalone document each wrapper must grow with the entire note. */
     .rendered-print-exporter-document,
@@ -36,9 +41,14 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
     }
     .rendered-print-exporter-document .markdown-preview-view {
       scrollbar-gutter: auto;
+      padding: 0 !important;
+    }
+    .rendered-print-exporter-document .markdown-preview-sizer {
+      max-width: none !important;
+      margin-inline: 0 !important;
     }
     img, svg { max-width: 100%; }
-    @media print { main.rendered-print-exporter-document { max-width: none; margin: 0; padding: 0; } }
+    @media print { main.rendered-print-exporter-document { padding: 0 !important; } }
   `;
   return `<!doctype html>\n<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, '<\\/style')}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
 }
