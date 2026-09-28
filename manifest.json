@@ -1,0 +1,9 @@
+{
+  "id": "rendered-print-exporter",
+  "name": "Rendered Print Exporter",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Export the Reading View rendering of a note as a self-contained HTML file for browser printing.",
+  "author": "braininavat06",
+  "isDesktopOnly": false
+}
