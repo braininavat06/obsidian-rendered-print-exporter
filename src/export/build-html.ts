@@ -11,11 +11,11 @@ export function buildHtml(title: string, content: HTMLElement, css: string, sett
   const normalization = `
     html, body { margin: 0; min-height: 100%; }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
-    body.theme-light { color-scheme: light; background: #fff; color: #222; }
+    body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
     main.rendered-print-exporter-document { max-width: 900px; margin: 0 auto; padding: 24px; }
     .markdown-preview-view { overflow: visible; }
     img, svg { max-width: 100%; }
     @media print { main.rendered-print-exporter-document { max-width: none; margin: 0; padding: 0; } }
   `;
-  return `<!doctype html>\n<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, '<\\/style')}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content markdown-reading-view">${content.outerHTML}</div></main></body></html>`;
+  return `<!doctype html>\n<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, '<\\/style')}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
 }

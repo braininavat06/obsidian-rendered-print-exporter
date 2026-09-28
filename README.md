@@ -8,11 +8,11 @@ For a manual installation, download `main.js` and `manifest.json` from the [repo
 
 For BRAT, install and enable BRAT, choose **Add Beta Plugin**, and enter `https://github.com/braininavat06/obsidian-rendered-print-exporter`. Select the latest release and enable **Rendered Print Exporter**. Release assets include `main.js` and `manifest.json`.
 
-For development, run `npm ci && npm run typecheck && npm run build` and copy the same two files. This project is still a POC; Reading View DOM equivalence with Image Captions is awaiting a device test.
+For development, run `npm ci && npm run typecheck && npm run build` and copy the same two files. Image Captions figures, captions, width attributes, classes, and inline styles have been confirmed in the off-screen render. Android browser display and print output still need device testing.
 
 Use **Export rendered note to HTML** from the command palette. The command reads the active Markdown file from the vault and renders it in a connected, off-screen DOM host without switching the current editor mode. It waits for rendering, two animation frames, a configurable delay, DOM quiet time, and image decode before cloning the result. The clone is cleaned and converted into a static HTML file. The render component and host are disposed afterward.
 
-Android first tries the public `Download/Obsidian HTML/` folder through the Capacitor Filesystem bridge (absolute path and `EXTERNAL_STORAGE`). If Android storage restrictions reject both, it tries the public `Documents/Obsidian HTML/` folder. Other platforms use the browser download API. The returned path is logged in the developer console.
+Android first tries the public `Download/Obsidian HTML/` folder through the Capacitor Filesystem bridge (absolute path and `EXTERNAL_STORAGE`). If Android storage restrictions reject both, it tries the public `Documents/Obsidian HTML/` folder. Other platforms use the browser download API. The completion notice displays the returned location. Any local image URL that remains after inlining is logged and produces a warning notice.
 
 ## Reading View DOM diagnostic
 
@@ -27,12 +27,12 @@ The DOM observer is armed before `MarkdownRenderer.render`. After rendering and 
 This repository cannot establish Image Captions fidelity or Android public storage access by TypeScript compilation alone. On a device with Image Captions enabled:
 
 1. Create a note with `![[image.jpg|캡션|250]]`, plus an aligned image. View it in Reading View and note the figure, caption, width, and alignment.
-2. Switch to Live Preview, run the export command, and inspect the console's `rendered image/caption counts`. Check the generated HTML for `image-captions-figure`, `figcaption`, inline `data:image/` URLs, and absence of `app://`, `blob:`, and vault `file://` resources.
+2. Switch to Live Preview and run the export command. Check the generated HTML for `image-captions-figure`, `figcaption`, inline `data:image/` URLs, and absence of `http://localhost/_capacitor_file_/`, `app://`, `blob:`, and vault `file://` image sources.
 3. Open the HTML in Chrome or Samsung Internet with network access off. Print to A4 PDF. Check Korean text, highlights, properties exclusion, nested list numbering, images, captions, width, and alignment.
 4. Repeat with a 10-page note containing long ordered lists and images between list items. Check that markers stay with text and no large gaps appear before figures.
 5. Repeat in dark Obsidian mode with the default Light export setting.
 
-Image Captions 1.2.1 registers a Markdown postprocessor for external images and a document `MutationObserver` for internal embeds. Its callback scans `.image-embed` and `.video-embed` descendants of child-list mutation targets; it does not check workspace leaf, `MarkdownPreviewView`, or visibility. The off-screen host is attached to the active view's document body so that observer can see it. This is a source-level compatibility finding; actual rendered equivalence remains to be tested in Obsidian.
+Image Captions 1.2.1 registers a Markdown postprocessor for external images and a document `MutationObserver` for internal embeds. Its callback scans `.image-embed` and `.video-embed` descendants of child-list mutation targets; it does not check workspace leaf, `MarkdownPreviewView`, or visibility. The off-screen host is attached to the active view's document body so that observer can see it. Diagnostic results confirmed matching caption text, width attributes, figure class, and inline style. Total element counts and layout width differed; Android browser rendering is the next acceptance test.
 
 ## Known limits
 

@@ -3,7 +3,7 @@ import { renderNote } from './render/render-note';
 import { cloneRenderedDom } from './export/clone-rendered-dom';
 import { sanitizeDom } from './export/sanitize-dom';
 import { inlineCanvas } from './export/inline-canvas';
-import { AssetResolver, inlineImages } from './export/inline-images';
+import { AssetResolver, inlineImages, unresolvedLocalImages } from './export/inline-images';
 import { collectStyles } from './export/collect-styles';
 import { buildHtml } from './export/build-html';
 import { saveHtml } from './export/save-html';
@@ -108,20 +108,27 @@ export default class RenderedHtmlExportPlugin extends Plugin {
       }
       console.debug('[Rendered Print Exporter] postprocessors complete');
       if (!rendered.element.hasChildNodes()) { new Notice('Rendered DOM is empty.'); return; }
-      logSnapshot('off-screen export source', snapshotRender(rendered.element));
       const clone = cloneRenderedDom(rendered.element);
       inlineCanvas(rendered.element, clone);
       sanitizeDom(clone, this.settings.includeProperties);
       const resolver = new AssetResolver(this.app, file);
       await inlineImages(clone, resolver);
-      const css = await collectStyles(resolver);
+      const css = await collectStyles(this.app, resolver, rendered.element.ownerDocument);
+      if (clone.querySelector('.image-captions-figure') && !css.includes('.image-captions-figure')) {
+        console.warn('[Rendered Print Exporter] Image Captions CSS was not collected');
+      }
       const html = buildHtml(file.basename, clone, css, this.settings);
-      const unresolved = html.match(/(?:app:\/\/|blob:|file:\/\/|localhost|127\.0\.0\.1)/g);
-      if (unresolved) console.warn(`[Rendered Print Exporter] ${unresolved.length} unresolved local references remain`);
+      const unresolvedImages = unresolvedLocalImages(clone);
+      for (const source of unresolvedImages) {
+        console.warn('[Rendered Print Exporter] local image remains outside HTML', source);
+      }
       try {
         const location = await saveHtml(filename, html);
         console.debug('[Rendered Print Exporter] saved', location);
-        new Notice(`HTML exported: ${filename}`);
+        new Notice(`HTML exported: ${location}`, 8000);
+        if (unresolvedImages.length) {
+          new Notice(`Warning: ${unresolvedImages.length} local image(s) could not be embedded.`, 8000);
+        }
       } catch (error) {
         console.error('[Rendered Print Exporter] save failed', error);
         new Notice('Failed to save HTML.');

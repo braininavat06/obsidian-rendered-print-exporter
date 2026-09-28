@@ -190,12 +190,38 @@ function mimeFromName(name) {
 }
 
 // src/export/inline-images.ts
+function decoded(value) {
+  try {
+    return decodeURI(value);
+  } catch {
+    return value;
+  }
+}
 function canonical(url) {
   try {
     const parsed = new URL(url, document.baseURI);
-    return `${parsed.origin}${decodeURI(parsed.pathname)}`;
+    return `${parsed.origin}${decoded(parsed.pathname)}`;
   } catch {
-    return decodeURI(url.split(/[?#]/)[0]);
+    return decoded(url.split(/[?#]/)[0]);
+  }
+}
+function resourcePath(url) {
+  try {
+    return decoded(new URL(url, document.baseURI).pathname);
+  } catch {
+    return decoded(url.split(/[?#]/)[0]);
+  }
+}
+function isLocalImageReference(url) {
+  if (!url || url.startsWith("data:")) return false;
+  try {
+    const parsed = new URL(url, document.baseURI);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+    }
+    return true;
+  } catch {
+    return true;
   }
 }
 var AssetResolver = class {
@@ -203,9 +229,11 @@ var AssetResolver = class {
     this.app = app;
     this.source = source;
     this.resourceFiles = /* @__PURE__ */ new Map();
+    this.vaultImageFiles = [];
     this.fileData = /* @__PURE__ */ new Map();
     for (const file of app.vault.getFiles()) {
       if (file.extension.toLowerCase() in { jpg: 1, jpeg: 1, png: 1, webp: 1, gif: 1, svg: 1, avif: 1, bmp: 1 }) {
+        this.vaultImageFiles.push(file);
         this.resourceFiles.set(canonical(app.vault.getResourcePath(file)), file);
       }
     }
@@ -214,8 +242,12 @@ var AssetResolver = class {
     if (!url || url.startsWith("data:")) return url;
     const normalized = canonical(url);
     let file = this.resourceFiles.get(normalized);
+    if (!file && isLocalImageReference(url)) {
+      const path = resourcePath(url);
+      file = this.vaultImageFiles.find((candidate) => path.endsWith(`/${candidate.path}`));
+    }
     if (!file) {
-      const maybePath = decodeURI(url.replace(/[?#].*$/, "")).replace(/^\/+/, "");
+      const maybePath = resourcePath(url).replace(/^\/+/, "");
       file = this.app.metadataCache.getFirstLinkpathDest(maybePath, this.source.path) ?? void 0;
     }
     if (file) {
@@ -256,33 +288,71 @@ async function inlineImages(root, resolver) {
     }
   }
   console.debug(`[Rendered Print Exporter] inlined ${success}/${images.length} images`);
+  return success;
+}
+function unresolvedLocalImages(root) {
+  return [...root.querySelectorAll("img")].map((image) => image.getAttribute("src") || image.getAttribute("data-src") || "").filter(isLocalImageReference);
 }
 
 // src/export/collect-styles.ts
-async function collectStyles(resolver) {
-  const sheets = [...document.styleSheets];
+async function inlineCssUrls(css, baseUrl, resolver) {
+  let result = css.replace(/@import\s+(?:url\([^)]*\)|["'][^"']+["'])[^;]*;/gi, "");
+  const references = [...new Set([...result.matchAll(/url\(\s*(["']?)(.*?)\1\s*\)/gi)].map((match) => match[2].trim()))];
+  for (const reference of references) {
+    if (!reference || reference.startsWith("data:") || reference.startsWith("#")) continue;
+    let data = null;
+    try {
+      const absolute = new URL(reference, baseUrl).href;
+      if (!/\.(?:woff2?|ttf|otf)(?:[?#]|$)/i.test(reference)) data = await resolver.resolve(absolute);
+    } catch (error) {
+      console.warn("[Rendered Print Exporter] CSS resource could not be resolved", reference, error);
+    }
+    const replacement = data?.startsWith("data:") ? `url("${data}")` : "none";
+    result = result.split(`url(${reference})`).join(replacement).split(`url("${reference}")`).join(replacement).split(`url('${reference}')`).join(replacement);
+  }
+  return result;
+}
+async function installedPluginStyles(app, resolver, baseUrl) {
+  const configDir = app.vault.configDir;
+  let enabled;
+  try {
+    enabled = JSON.parse(await app.vault.adapter.read(`${configDir}/community-plugins.json`));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(enabled)) return [];
+  const styles = [];
+  for (const id of enabled) {
+    if (typeof id !== "string" || !/^[a-z0-9-]+$/i.test(id)) continue;
+    const path = `${configDir}/plugins/${id}/styles.css`;
+    try {
+      if (await app.vault.adapter.exists(path)) {
+        styles.push(await inlineCssUrls(await app.vault.adapter.read(path), baseUrl, resolver));
+      }
+    } catch (error) {
+      console.warn("[Rendered Print Exporter] plugin CSS could not be read", path, error);
+    }
+  }
+  return styles;
+}
+async function collectStyles(app, resolver, doc) {
+  const sheets = [...doc.styleSheets];
   const chunks = [];
   for (const sheet of sheets) {
     if (sheet.disabled) continue;
     try {
       const rules = [...sheet.cssRules].filter((rule) => rule.type !== CSSRule.FONT_FACE_RULE).map((rule) => rule.cssText);
-      let sheetCss = rules.join("\n");
-      sheetCss = sheetCss.replace(/@import\s+(?:url\([^)]*\)|["'][^"']+["'])[^;]*;/gi, "");
-      const references = [...new Set([...sheetCss.matchAll(/url\(\s*(["']?)(.*?)\1\s*\)/gi)].map((match) => match[2].trim()))];
-      for (const reference of references) {
-        if (!reference || reference.startsWith("data:") || reference.startsWith("#")) continue;
-        const absolute = new URL(reference, sheet.href || document.baseURI).href;
-        const isFont = /\.(?:woff2?|ttf|otf)(?:[?#]|$)/i.test(reference);
-        const data = isFont ? null : await resolver.resolve(absolute);
-        const replacement = data?.startsWith("data:") ? `url("${data}")` : "none";
-        sheetCss = sheetCss.split(`url(${reference})`).join(replacement).split(`url("${reference}")`).join(replacement).split(`url('${reference}')`).join(replacement);
-      }
-      chunks.push(sheetCss);
+      chunks.push(await inlineCssUrls(rules.join("\n"), sheet.href || doc.baseURI, resolver));
     } catch (error) {
       console.warn("[Rendered Print Exporter] stylesheet could not be read", sheet.href, error);
+      if (sheet.ownerNode?.nodeName === "STYLE" && sheet.ownerNode.textContent) {
+        chunks.push(await inlineCssUrls(sheet.ownerNode.textContent, doc.baseURI, resolver));
+      }
     }
   }
-  console.debug(`[Rendered Print Exporter] collected ${chunks.length}/${sheets.length} stylesheets`);
+  const pluginStyles = await installedPluginStyles(app, resolver, doc.baseURI);
+  chunks.push(...pluginStyles);
+  console.debug(`[Rendered Print Exporter] collected ${chunks.length} CSS sources (${sheets.length} stylesheets, ${pluginStyles.length} plugin files)`);
   return chunks.join("\n");
 }
 
@@ -309,14 +379,14 @@ function buildHtml(title, content, css, settings) {
   const normalization = `
     html, body { margin: 0; min-height: 100%; }
     body { font-family: var(--font-text, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); }
-    body.theme-light { color-scheme: light; background: #fff; color: #222; }
+    body.theme-light { color-scheme: light; background: #fff; color: var(--text-normal, #222); }
     main.rendered-print-exporter-document { max-width: 900px; margin: 0 auto; padding: 24px; }
     .markdown-preview-view { overflow: visible; }
     img, svg { max-width: 100%; }
     @media print { main.rendered-print-exporter-document { max-width: none; margin: 0; padding: 0; } }
   `;
   return `<!doctype html>
-<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content markdown-reading-view">${content.outerHTML}</div></main></body></html>`;
+<html lang="ko" class="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${css.replace(/<\/style/gi, "<\\/style")}</style><style>${normalization}</style><style>${printCss(settings)}</style></head><body class="${theme} rendered-print-exporter"><main class="rendered-print-exporter-document"><div class="workspace-leaf-content" data-type="markdown"><div class="markdown-reading-view">${content.outerHTML}</div></div></main></body></html>`;
 }
 
 // src/export/save-html.ts
@@ -326,6 +396,14 @@ var import_obsidian2 = require("obsidian");
 function filesystem() {
   const global = window;
   return global.Capacitor?.Plugins?.Filesystem;
+}
+function readableLocation(uri) {
+  const path = uri.startsWith("file://") ? uri.slice("file://".length) : uri;
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
 }
 async function saveToDownloads(filename, html) {
   const bridge = filesystem();
@@ -345,7 +423,8 @@ async function saveToDownloads(filename, html) {
         encoding: "utf8",
         recursive: true
       });
-      return result.uri || (await bridge.getUri({ path, directory })).uri;
+      const uri = result.uri || (await bridge.getUri({ path, directory })).uri;
+      return readableLocation(uri);
     } catch (error) {
       errors.push(`${directory || "absolute Download"}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -586,20 +665,27 @@ var RenderedHtmlExportPlugin = class extends import_obsidian4.Plugin {
         new import_obsidian4.Notice("Rendered DOM is empty.");
         return;
       }
-      logSnapshot("off-screen export source", snapshotRender(rendered.element));
       const clone = cloneRenderedDom(rendered.element);
       inlineCanvas(rendered.element, clone);
       sanitizeDom(clone, this.settings.includeProperties);
       const resolver = new AssetResolver(this.app, file);
       await inlineImages(clone, resolver);
-      const css = await collectStyles(resolver);
+      const css = await collectStyles(this.app, resolver, rendered.element.ownerDocument);
+      if (clone.querySelector(".image-captions-figure") && !css.includes(".image-captions-figure")) {
+        console.warn("[Rendered Print Exporter] Image Captions CSS was not collected");
+      }
       const html = buildHtml(file.basename, clone, css, this.settings);
-      const unresolved = html.match(/(?:app:\/\/|blob:|file:\/\/|localhost|127\.0\.0\.1)/g);
-      if (unresolved) console.warn(`[Rendered Print Exporter] ${unresolved.length} unresolved local references remain`);
+      const unresolvedImages = unresolvedLocalImages(clone);
+      for (const source of unresolvedImages) {
+        console.warn("[Rendered Print Exporter] local image remains outside HTML", source);
+      }
       try {
         const location = await saveHtml(filename, html);
         console.debug("[Rendered Print Exporter] saved", location);
-        new import_obsidian4.Notice(`HTML exported: ${filename}`);
+        new import_obsidian4.Notice(`HTML exported: ${location}`, 8e3);
+        if (unresolvedImages.length) {
+          new import_obsidian4.Notice(`Warning: ${unresolvedImages.length} local image(s) could not be embedded.`, 8e3);
+        }
       } catch (error) {
         console.error("[Rendered Print Exporter] save failed", error);
         new import_obsidian4.Notice("Failed to save HTML.");

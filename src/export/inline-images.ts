@@ -2,18 +2,42 @@ import { App, TFile } from 'obsidian';
 import { binaryToDataUri } from '../utils/data-uri';
 import { mimeFromName } from '../utils/mime';
 
+function decoded(value: string): string {
+  try { return decodeURI(value); } catch { return value; }
+}
+
 function canonical(url: string): string {
-  try { const parsed = new URL(url, document.baseURI); return `${parsed.origin}${decodeURI(parsed.pathname)}`; }
-  catch { return decodeURI(url.split(/[?#]/)[0]); }
+  try { const parsed = new URL(url, document.baseURI); return `${parsed.origin}${decoded(parsed.pathname)}`; }
+  catch { return decoded(url.split(/[?#]/)[0]); }
+}
+
+function resourcePath(url: string): string {
+  try { return decoded(new URL(url, document.baseURI).pathname); }
+  catch { return decoded(url.split(/[?#]/)[0]); }
+}
+
+export function isLocalImageReference(url: string): boolean {
+  if (!url || url.startsWith('data:')) return false;
+  try {
+    const parsed = new URL(url, document.baseURI);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+    }
+    return true;
+  } catch {
+    return true;
+  }
 }
 
 export class AssetResolver {
   private readonly resourceFiles = new Map<string, TFile>();
+  private readonly vaultImageFiles: TFile[] = [];
   private readonly fileData = new Map<string, Promise<string>>();
 
   constructor(private readonly app: App, private readonly source: TFile) {
     for (const file of app.vault.getFiles()) {
       if (file.extension.toLowerCase() in { jpg: 1, jpeg: 1, png: 1, webp: 1, gif: 1, svg: 1, avif: 1, bmp: 1 }) {
+        this.vaultImageFiles.push(file);
         this.resourceFiles.set(canonical(app.vault.getResourcePath(file)), file);
       }
     }
@@ -23,8 +47,14 @@ export class AssetResolver {
     if (!url || url.startsWith('data:')) return url;
     const normalized = canonical(url);
     let file = this.resourceFiles.get(normalized);
+    if (!file && isLocalImageReference(url)) {
+      const path = resourcePath(url);
+      // Android's _capacitor_file_ URL contains the vault-relative path after
+      // the device's storage prefix. Match the rendered URL, never Markdown syntax.
+      file = this.vaultImageFiles.find(candidate => path.endsWith(`/${candidate.path}`));
+    }
     if (!file) {
-      const maybePath = decodeURI(url.replace(/[?#].*$/, '')).replace(/^\/+/, '');
+      const maybePath = resourcePath(url).replace(/^\/+/, '');
       file = this.app.metadataCache.getFirstLinkpathDest(maybePath, this.source.path) ?? undefined;
     }
     if (file) {
@@ -46,7 +76,7 @@ export class AssetResolver {
   }
 }
 
-export async function inlineImages(root: HTMLElement, resolver: AssetResolver): Promise<void> {
+export async function inlineImages(root: HTMLElement, resolver: AssetResolver): Promise<number> {
   const images = [...root.querySelectorAll('img')];
   let success = 0;
   for (const image of images) {
@@ -66,4 +96,11 @@ export async function inlineImages(root: HTMLElement, resolver: AssetResolver): 
     }
   }
   console.debug(`[Rendered Print Exporter] inlined ${success}/${images.length} images`);
+  return success;
+}
+
+export function unresolvedLocalImages(root: HTMLElement): string[] {
+  return [...root.querySelectorAll('img')]
+    .map(image => image.getAttribute('src') || image.getAttribute('data-src') || '')
+    .filter(isLocalImageReference);
 }

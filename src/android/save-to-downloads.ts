@@ -12,6 +12,11 @@ function filesystem(): CapacitorFilesystem | undefined {
   return global.Capacitor?.Plugins?.Filesystem;
 }
 
+function readableLocation(uri: string): string {
+  const path = uri.startsWith('file://') ? uri.slice('file://'.length) : uri;
+  try { return decodeURIComponent(path); } catch { return path; }
+}
+
 export async function saveToDownloads(filename: string, html: string): Promise<string> {
   const bridge = filesystem();
   if (!bridge) throw new Error('Capacitor Filesystem is unavailable');
@@ -26,7 +31,8 @@ export async function saveToDownloads(filename: string, html: string): Promise<s
       const result = await bridge.writeFile({
         path, data: html, directory, encoding: 'utf8', recursive: true
       });
-      return result.uri || (await bridge.getUri({ path, directory })).uri;
+      const uri = result.uri || (await bridge.getUri({ path, directory })).uri;
+      return readableLocation(uri);
     } catch (error) {
       errors.push(`${directory || 'absolute Download'}: ${error instanceof Error ? error.message : String(error)}`);
     }
