@@ -6,7 +6,9 @@ Obsidian Community Plugin POC for exporting a note through Obsidian's Reading Vi
 
 For a manual installation, download `main.js` and `manifest.json` from the [repository](https://github.com/braininavat06/obsidian-rendered-print-exporter), place them in `<vault>/.obsidian/plugins/rendered-print-exporter/`, restart Obsidian, then enable **Rendered Print Exporter** under Community plugins. No Node or Electron module is bundled into the plugin.
 
-For development, run `npm ci && npm run typecheck && npm run build` and copy the same two files. Tagged releases are configured to attach both files so the repository can also be installed through BRAT once a release exists. This project is still a POC; Reading View DOM equivalence with Image Captions is awaiting a device test.
+For BRAT, install and enable BRAT, choose **Add Beta Plugin**, and enter `https://github.com/braininavat06/obsidian-rendered-print-exporter`. Select the latest release and enable **Rendered Print Exporter**. Release assets include `main.js` and `manifest.json`.
+
+For development, run `npm ci && npm run typecheck && npm run build` and copy the same two files. This project is still a POC; Reading View DOM equivalence with Image Captions is awaiting a device test.
 
 Use **Export rendered note to HTML** from the command palette. The command reads the active Markdown file from the vault and renders it in a connected, off-screen DOM host without switching the current editor mode. It waits for rendering, two animation frames, a configurable delay, DOM quiet time, and image decode before cloning the result. The clone is cleaned and converted into a static HTML file. The render component and host are disposed afterward.
 

@@ -3,7 +3,7 @@ name: Build and release
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['*']
   pull_request:
   workflow_dispatch:
 
@@ -25,10 +25,10 @@ jobs:
       - name: Verify committed plugin bundle
         run: git diff --exit-code -- main.js
       - name: Verify release version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: test "v$(node -p "require('./manifest.json').version")" = "$GITHUB_REF_NAME"
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "$(node -p "require('./manifest.json').version")" = "$GITHUB_REF_NAME"
       - name: Publish installable release assets
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" main.js manifest.json --title "$GITHUB_REF_NAME" --generate-notes
